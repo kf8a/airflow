@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	zmq "github.com/pebbe/zmq4"
 	serial "github.com/tarm/goserial"
@@ -9,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+  "bufio"
 )
 
 type AIR struct {
@@ -40,8 +40,10 @@ func (air AIR) Sample() string {
 }
 
 func (air AIR) parse(data string) Message {
+  /* log.Print(data) */
 	elements := strings.Fields(data)
 
+  /* log.Print(elements) */
 	pressure, _ := strconv.ParseFloat(elements[1], 64)
 	temperature, _ := strconv.ParseFloat(elements[2], 64)
 	vol, _ := strconv.ParseFloat(elements[3], 64)
@@ -61,22 +63,19 @@ func (air AIR) read() string {
 
 	defer port.Close()
 
-	result := new(bytes.Buffer)
-
 	query := air.address + "\r"
 	_, err = port.Write([]byte(query))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	buffer := make([]byte, 1024)
-	n, err := port.Read(buffer)
+  reader := bufio.NewReader(port)
+	reply, err := reader.ReadBytes('\x0d')
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	result.Write(buffer[:n])
-	return result.String()
+	return string(reply)
 }
 
 func main() {
