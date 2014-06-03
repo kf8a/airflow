@@ -60,7 +60,6 @@ func (air AIR) read() string {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer port.Close()
 
 	query := air.address + "\r"
@@ -95,5 +94,6 @@ func main() {
 		sample := air.Sample()
 		/* log.Print(sample) */
 		socket.Send(sample, 0)
+    time.Sleep(5 * time.Second)
 	}
 }
