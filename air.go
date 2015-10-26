@@ -41,7 +41,7 @@ func (air AIR) Sample() string {
 
 	data := air.read()
 	message := air.parse(data)
-	airLog.Set(message.mass)
+	airLog.Set(message.Mass)
 	json_message, err := json.Marshal(message)
 	if err != nil {
 		log.Fatal(err)
