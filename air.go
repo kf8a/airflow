@@ -1,14 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	zmq "github.com/pebbe/zmq4"
+	"github.com/prometheus/client_golang/prometheus"
 	serial "github.com/tarm/goserial"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
-  "bufio"
 )
 
 type AIR struct {
@@ -28,10 +30,18 @@ type Message struct {
 	At          time.Time `json:"at"`
 }
 
+var (
+	airLog = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "trailer_air_flow",
+		Help: "Current Air flow.",
+	})
+)
+
 func (air AIR) Sample() string {
 
 	data := air.read()
 	message := air.parse(data)
+	airLog.Set(message.mass)
 	json_message, err := json.Marshal(message)
 	if err != nil {
 		log.Fatal(err)
@@ -40,10 +50,10 @@ func (air AIR) Sample() string {
 }
 
 func (air AIR) parse(data string) Message {
-  /* log.Print(data) */
+	/* log.Print(data) */
 	elements := strings.Fields(data)
 
-  /* log.Print(elements) */
+	/* log.Print(elements) */
 	pressure, _ := strconv.ParseFloat(elements[1], 64)
 	temperature, _ := strconv.ParseFloat(elements[2], 64)
 	vol, _ := strconv.ParseFloat(elements[3], 64)
@@ -68,7 +78,7 @@ func (air AIR) read() string {
 		log.Fatal(err)
 	}
 
-  reader := bufio.NewReader(port)
+	reader := bufio.NewReader(port)
 	reply, err := reader.ReadBytes('\x0d')
 	if err != nil {
 		log.Fatal(err)
@@ -77,10 +87,10 @@ func (air AIR) read() string {
 	return string(reply)
 }
 
-func main() {
+func readMassFlowController() {
 	air := AIR{}
 	air.site = "glbrc"
-	air.device = "/dev/ttyUSB0"
+	air.device = "/dev/ttyS5"
 	air.address = "A"
 
 	socket, err := zmq.NewSocket(zmq.PUB)
@@ -92,8 +102,18 @@ func main() {
 
 	for {
 		sample := air.Sample()
-		/* log.Print(sample) */
+		log.Print(sample)
 		socket.Send(sample, 0)
-    time.Sleep(5 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
+}
+
+func init() {
+	prometheus.MustRegister(airLog)
+}
+
+func main() {
+	go readMassFlowController()
+	http.Handle("/metrics", prometheus.Handler())
+	http.ListenAndServe(":9093", nil)
 }
