@@ -64,6 +64,24 @@ func (air AIR) parse(data string) Message {
 	return Message{pressure, temperature, vol, mass, setpoint, gas, air.site, time.Now()}
 }
 
+// Send a couple of returns to wake up the controller
+func (air AIR) wake() {
+	c := serial.Config{Name: air.device, Baud: 9600}
+	port, err := serial.OpenPort(&c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer port.Close()
+
+	for i := 0; i < 5; i++ {
+		query := air.address + "\r"
+		_, err = port.Write([]byte(query))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
 func (air AIR) read() string {
 	c := serial.Config{Name: air.device, Baud: 9600}
 	port, err := serial.OpenPort(&c)
@@ -99,6 +117,8 @@ func readMassFlowController() {
 	}
 	defer socket.Close()
 	socket.Bind("tcp://*:5558")
+
+	air.wake()
 
 	for {
 		sample := air.Sample()
