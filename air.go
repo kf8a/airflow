@@ -124,7 +124,7 @@ func readMassFlowController() {
 		sample := air.Sample()
 		log.Print(sample)
 		socket.Send(sample, 0)
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
